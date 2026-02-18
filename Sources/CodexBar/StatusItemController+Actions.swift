@@ -67,6 +67,13 @@ extension StatusItemController {
         self.creditsPurchaseWindow = controller
     }
 
+    @objc func openCodeReviewLogsPanel() {
+        let entries = self.store.openAIDashboard?.codeReviewLogs ?? []
+        let controller = self.codeReviewLogsWindow ?? CodeReviewLogsPanelWindowController()
+        controller.show(entries: entries)
+        self.codeReviewLogsWindow = controller
+    }
+
     private static func sanitizedCreditsPurchaseURL(_ raw: String?) -> String? {
         guard let raw, let url = URL(string: raw) else { return nil }
         guard let host = url.host?.lowercased(), host.contains("chatgpt.com") else { return nil }
