@@ -68,10 +68,20 @@ extension StatusItemController {
     }
 
     @objc func openCodeReviewLogsPanel() {
-        let entries = self.store.openAIDashboard?.codeReviewLogs ?? []
         let controller = self.codeReviewLogsWindow ?? CodeReviewLogsPanelWindowController()
-        controller.show(entries: entries)
+        let initialEntries = self.store.openAIDashboard?.codeReviewLogs ?? []
+        controller.show(entries: initialEntries)
         self.codeReviewLogsWindow = controller
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await ProviderInteractionContext.$current.withValue(.userInitiated) {
+                await self.store.refresh(forceTokenUsage: false)
+            }
+            let refreshedEntries = self.store.openAIDashboard?.codeReviewLogs ?? []
+            guard !refreshedEntries.isEmpty else { return }
+            self.codeReviewLogsWindow?.show(entries: refreshedEntries)
+        }
     }
 
     private static func sanitizedCreditsPurchaseURL(_ raw: String?) -> String? {

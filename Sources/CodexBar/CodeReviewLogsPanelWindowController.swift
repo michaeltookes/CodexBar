@@ -114,12 +114,12 @@ private struct CodeReviewLogsPanelView: View {
 
 private struct CodeReviewLogRowView: View {
     private static let dateRegex = try? NSRegularExpression(
-        pattern: "\\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\b",
+        pattern: "\\b(?:today|yesterday|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2})\\b",
         options: .caseInsensitive)
     private static let bugRegex = try? NSRegularExpression(
         pattern: "\\b(\\d+)\\s+bugs?\\b",
         options: .caseInsensitive)
-    private static let knownStates = ["Merged", "Closed", "Open", "Pending", "In review"]
+    private static let knownStates = ["Merged", "Closed", "Pending", "In review"]
 
     struct Metadata {
         let dateText: String?
@@ -238,6 +238,9 @@ private struct CodeReviewLogRowView: View {
         }
         if stateText == nil {
             stateText = Self.knownStates.first { source.localizedCaseInsensitiveContains($0) }
+        }
+        if stateText?.localizedCaseInsensitiveCompare("Open") == .orderedSame {
+            stateText = nil
         }
         if actionText == nil {
             if source.localizedCaseInsensitiveContains("fix") {

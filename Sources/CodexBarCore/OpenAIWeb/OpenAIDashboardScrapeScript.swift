@@ -368,7 +368,7 @@ let openAIDashboardScrapeScript = """
             /(?:^download app$|^settings$|^docs$|^codex app$|^try in your terminal$|^try in your ide$)/i;
           const onboardingExtraRegex = /(?:^tasks$|^archive$|get started with codex)/i;
           const dateRegex =
-            /\\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\b/i;
+            /\\b(?:today|yesterday|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2})\\b/i;
           const bugRegex = /\\b(\\d+)\\s+bugs?\\b/i;
           const normalizeLabel = raw => String(raw || '').trim().replace(/\\s+/g, ' ');
           const metadataHasSignals = metadata =>
@@ -383,9 +383,8 @@ let openAIDashboardScrapeScript = """
             if (!lower) return null;
             if (/\\bmerged\\b/.test(lower)) return 'Merged';
             if (/\\bclosed\\b/.test(lower)) return 'Closed';
-            if (/\\bpending\\b/.test(lower)) return 'Pending';
             if (/\\bin\\s+review\\b/.test(lower)) return 'In review';
-            if (/\\bopen\\b/.test(lower)) return 'Open';
+            if (/\\bpending\\b/.test(lower)) return 'Pending';
             return null;
           };
           const parseMetadata = raw => {
@@ -399,14 +398,7 @@ let openAIDashboardScrapeScript = """
               .split(/[·|]/)
               .map(part => normalizeLabel(part))
               .filter(Boolean);
-            let stateText = null;
-            for (const candidate of stateCandidates) {
-              const resolved = resolveStateText(candidate);
-              if (resolved) {
-                stateText = resolved;
-                break;
-              }
-            }
+            const stateText = resolveStateText(stateCandidates.join(' · '));
             let actionText = null;
             for (const candidate of stateCandidates) {
               const actionCandidate = candidate.toLowerCase();
