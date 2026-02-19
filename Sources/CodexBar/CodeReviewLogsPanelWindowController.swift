@@ -67,11 +67,12 @@ final class CodeReviewLogsPanelWindowController: NSWindowController {
               scheme == "http" || scheme == "https",
               let host = url.host?.lowercased() else { return false }
 
-        if host.contains("chatgpt.com") {
+        let normalizedHost = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+
+        if normalizedHost == "chatgpt.com" || normalizedHost.hasSuffix(".chatgpt.com") {
             return true
         }
 
-        let normalizedHost = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
         guard normalizedHost == "github.com" else { return false }
 
         let path = url.path.lowercased()

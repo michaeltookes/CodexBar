@@ -17,6 +17,13 @@ struct CodeReviewLogsPanelWindowControllerTests {
     }
 
     @Test
+    func acceptsChatGPTSubdomainCodeReviewURL() {
+        let url = CodeReviewLogsPanelWindowController
+            .sanitizedLogURL("https://platform.chatgpt.com/codex?tab=code_reviews")
+        #expect(url?.absoluteString == "https://platform.chatgpt.com/codex?tab=code_reviews")
+    }
+
+    @Test
     func acceptsGitHubReviewURLs() {
         let url = CodeReviewLogsPanelWindowController
             .sanitizedLogURL("https://github.com/org/repo/pull/123")
@@ -33,7 +40,9 @@ struct CodeReviewLogsPanelWindowControllerTests {
     func rejectsUnsupportedSchemesAndHosts() {
         let javascriptURL = CodeReviewLogsPanelWindowController.sanitizedLogURL("javascript:alert(1)")
         let externalURL = CodeReviewLogsPanelWindowController.sanitizedLogURL("https://example.com/review/1")
+        let spoofedChatGPTURL = CodeReviewLogsPanelWindowController.sanitizedLogURL("https://evil-chatgpt.com/codex")
         #expect(javascriptURL == nil)
         #expect(externalURL == nil)
+        #expect(spoofedChatGPTURL == nil)
     }
 }
