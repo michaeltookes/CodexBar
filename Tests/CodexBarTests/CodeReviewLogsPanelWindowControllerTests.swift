@@ -31,6 +31,29 @@ struct CodeReviewLogsPanelWindowControllerTests {
     }
 
     @Test
+    func acceptsGitHubCommitAndCompareURLs() {
+        let commitURL = CodeReviewLogsPanelWindowController
+            .sanitizedLogURL("https://github.com/org/repo/commit/abc123")
+        let compareURL = CodeReviewLogsPanelWindowController
+            .sanitizedLogURL("https://github.com/org/repo/compare/main...feature")
+        #expect(commitURL?.absoluteString == "https://github.com/org/repo/commit/abc123")
+        #expect(compareURL?.absoluteString == "https://github.com/org/repo/compare/main...feature")
+    }
+
+    @Test
+    func handlesWWWPrefix() {
+        let url = CodeReviewLogsPanelWindowController.sanitizedLogURL("https://www.chatgpt.com/codex")
+        #expect(url?.absoluteString == "https://www.chatgpt.com/codex")
+    }
+
+    @Test
+    func rejectsEmptyAndWhitespaceInput() {
+        #expect(CodeReviewLogsPanelWindowController.sanitizedLogURL(nil) == nil)
+        #expect(CodeReviewLogsPanelWindowController.sanitizedLogURL("") == nil)
+        #expect(CodeReviewLogsPanelWindowController.sanitizedLogURL("   \n\t ") == nil)
+    }
+
+    @Test
     func rejectsNonReviewGitHubURLs() {
         let url = CodeReviewLogsPanelWindowController.sanitizedLogURL("https://github.com/org/repo")
         #expect(url == nil)
