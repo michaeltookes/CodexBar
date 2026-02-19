@@ -75,11 +75,20 @@ extension StatusItemController {
 
         Task { @MainActor [weak self] in
             guard let self else { return }
-            await ProviderInteractionContext.$current.withValue(.userInitiated) {
-                await self.store.refresh(forceTokenUsage: true)
+            let accountEmail = self.store.codexAccountEmailForOpenAIDashboard()
+            let fetcher = OpenAIDashboardFetcher()
+            var refreshedEntries = await fetcher.loadCodeReviewLogs(
+                accountEmail: accountEmail,
+                timeout: 15)
+            if refreshedEntries.isEmpty {
+                await ProviderInteractionContext.$current.withValue(.userInitiated) {
+                    await self.store.refresh(forceTokenUsage: true)
+                }
+                let fallbackEmail = self.store.codexAccountEmailForOpenAIDashboard()
+                refreshedEntries = await fetcher.loadCodeReviewLogs(
+                    accountEmail: fallbackEmail,
+                    timeout: 10)
             }
-            let refreshedEntries = self.store.openAIDashboard?.codeReviewLogs ?? []
-            guard !refreshedEntries.isEmpty else { return }
             self.codeReviewLogsWindow?.show(entries: refreshedEntries)
         }
     }

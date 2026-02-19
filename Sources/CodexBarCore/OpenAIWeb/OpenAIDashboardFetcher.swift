@@ -219,14 +219,10 @@ public struct OpenAIDashboardFetcher {
                         continue
                     }
                 }
-                let codeReviewLogs = await self.loadCodeReviewLogs(
-                    webView: webView,
-                    deadline: min(deadline, Date().addingTimeInterval(8)),
-                    logger: log)
                 return OpenAIDashboardSnapshot(
                     signedInEmail: scrape.signedInEmail,
                     codeReviewRemainingPercent: codeReview,
-                    codeReviewLogs: codeReviewLogs,
+                    codeReviewLogs: [],
                     creditEvents: events,
                     dailyBreakdown: breakdown,
                     usageBreakdown: usageBreakdown,
@@ -245,6 +241,34 @@ public struct OpenAIDashboardFetcher {
             Self.writeDebugArtifacts(html: html, bodyText: lastBody, logger: log)
         }
         throw FetchError.noDashboardData(body: lastBody ?? "")
+    }
+
+    public func loadCodeReviewLogs(
+        accountEmail: String?,
+        logger: ((String) -> Void)? = nil,
+        timeout: TimeInterval = 20) async -> [OpenAICodeReviewLogEntry]
+    {
+        let store = OpenAIDashboardWebsiteDataStore.store(forAccountEmail: accountEmail)
+        return await self.loadCodeReviewLogs(
+            websiteDataStore: store,
+            logger: logger,
+            timeout: timeout)
+    }
+
+    public func loadCodeReviewLogs(
+        websiteDataStore: WKWebsiteDataStore,
+        logger: ((String) -> Void)? = nil,
+        timeout: TimeInterval = 20) async -> [OpenAICodeReviewLogEntry]
+    {
+        guard timeout > 0 else { return [] }
+        guard let lease = try? await self.makeWebView(websiteDataStore: websiteDataStore, logger: logger) else {
+            return []
+        }
+        defer { lease.release() }
+        return await self.loadCodeReviewLogs(
+            webView: lease.webView,
+            deadline: Date().addingTimeInterval(timeout),
+            logger: lease.log)
     }
 
     private func loadCodeReviewLogs(

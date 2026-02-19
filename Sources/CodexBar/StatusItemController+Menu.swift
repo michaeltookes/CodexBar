@@ -246,7 +246,7 @@ extension StatusItemController {
             dashboard != nil
         let hasCreditsHistory = openAIWebEligible && !(dashboard?.dailyBreakdown ?? []).isEmpty
         let hasUsageBreakdown = openAIWebEligible && !(dashboard?.usageBreakdown ?? []).isEmpty
-        let hasCodeReviewLogs = openAIWebEligible && !(dashboard?.codeReviewLogs ?? []).isEmpty
+        let hasCodeReviewLogs = openAIWebEligible
         let hasCostHistory = self.settings.isCostUsageEffectivelyEnabled(for: currentProvider) &&
             (self.store.tokenSnapshot(for: currentProvider)?.daily.isEmpty == false)
         let hasOpenAIWebMenuItems = !showAllTokenAccounts &&
@@ -979,8 +979,6 @@ extension StatusItemController {
 
     @discardableResult
     private func addCodeReviewLogsPanelItem(to menu: NSMenu) -> Bool {
-        let entries = self.store.openAIDashboard?.codeReviewLogs ?? []
-        guard !entries.isEmpty else { return false }
         let item = self.makeCodeReviewLogsPanelItem()
         menu.addItem(item)
         return true

@@ -113,26 +113,13 @@ private struct CodeReviewLogsPanelView: View {
 }
 
 private struct CodeReviewLogRowView: View {
-    private static let dateRegex = try? NSRegularExpression(
-        pattern: "\\b(?:today|yesterday|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2})\\b",
-        options: .caseInsensitive)
-    private static let bugRegex = try? NSRegularExpression(
-        pattern: "\\b(\\d+)\\s+bugs?\\b",
-        options: .caseInsensitive)
-    private static let knownStates = ["Merged", "Closed", "Pending", "In review"]
-
-    struct Metadata {
-        let dateText: String?
-        let bugCount: Int?
-        let stateText: String?
-        let actionText: String?
-    }
-
     let entry: OpenAICodeReviewLogEntry
     let onOpenURL: (String?) -> Void
 
     var body: some View {
-        let metadata = self.resolvedMetadata(for: self.entry)
+        let dateText = self.sanitizedText(self.entry.dateText)
+        let stateText = self.normalizedStateText(self.entry.stateText)
+        let actionText = self.sanitizedText(self.entry.actionText)
         VStack(alignment: .leading, spacing: 6) {
             Text(self.entry.title)
                 .font(.headline)
@@ -148,17 +135,17 @@ private struct CodeReviewLogRowView: View {
             }
 
             HStack(spacing: 8) {
-                if let dateText = metadata.dateText {
+                if let dateText {
                     self.pill(text: dateText, style: .neutral)
                 }
-                if let bugCount = metadata.bugCount {
+                if let bugCount = self.entry.bugCount {
                     let label = bugCount == 1 ? "1 bug" : "\(bugCount) bugs"
                     self.pill(text: label, style: .warning)
                 }
-                if let stateText = metadata.stateText {
+                if let stateText {
                     self.pill(text: stateText, style: self.stateStyle(for: stateText))
                 }
-                if let actionText = metadata.actionText, self.entry.url != nil {
+                if let actionText, self.entry.url != nil {
                     Button(action: { self.onOpenURL(self.entry.url) }, label: {
                         self.pill(text: actionText, style: .action)
                     })
@@ -221,57 +208,17 @@ private struct CodeReviewLogRowView: View {
         }
     }
 
-    private func resolvedMetadata(for entry: OpenAICodeReviewLogEntry) -> Metadata {
-        var dateText = self.sanitizedText(entry.dateText)
-        var bugCount = entry.bugCount
-        var stateText = self.sanitizedText(entry.stateText)
-        var actionText = self.sanitizedText(entry.actionText)
-        let source = self.sanitizedText(entry.subtitle) ?? ""
-
-        if dateText == nil {
-            dateText = Self.firstMatch(in: source, regex: Self.dateRegex)
-        }
-        if bugCount == nil,
-           let rawBug = Self.captureGroup(in: source, regex: Self.bugRegex, index: 1)
-        {
-            bugCount = Int(rawBug)
-        }
-        if stateText == nil {
-            stateText = Self.knownStates.first { source.localizedCaseInsensitiveContains($0) }
-        }
-        if stateText?.localizedCaseInsensitiveCompare("Open") == .orderedSame {
-            stateText = nil
-        }
-        if actionText == nil {
-            if source.localizedCaseInsensitiveContains("fix") {
-                actionText = "Fix"
-            } else if source.localizedCaseInsensitiveContains("open") {
-                actionText = "Open"
-            }
-        }
-        return Metadata(dateText: dateText, bugCount: bugCount, stateText: stateText, actionText: actionText)
-    }
-
     private func sanitizedText(_ value: String?) -> String? {
         guard let value else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    private static func firstMatch(in source: String, regex: NSRegularExpression?) -> String? {
-        guard !source.isEmpty, let regex else { return nil }
-        let range = NSRange(source.startIndex..<source.endIndex, in: source)
-        guard let match = regex.firstMatch(in: source, options: [], range: range),
-              let valueRange = Range(match.range, in: source) else { return nil }
-        return String(source[valueRange])
-    }
-
-    private static func captureGroup(in source: String, regex: NSRegularExpression?, index: Int) -> String? {
-        guard !source.isEmpty, let regex else { return nil }
-        let range = NSRange(source.startIndex..<source.endIndex, in: source)
-        guard let match = regex.firstMatch(in: source, options: [], range: range),
-              match.numberOfRanges > index,
-              let valueRange = Range(match.range(at: index), in: source) else { return nil }
-        return String(source[valueRange])
+    private func normalizedStateText(_ value: String?) -> String? {
+        guard let state = self.sanitizedText(value) else { return nil }
+        if state.localizedCaseInsensitiveCompare("open") == .orderedSame {
+            return nil
+        }
+        return state
     }
 }
