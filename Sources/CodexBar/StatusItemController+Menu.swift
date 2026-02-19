@@ -246,7 +246,7 @@ extension StatusItemController {
             dashboard != nil
         let hasCreditsHistory = openAIWebEligible && !(dashboard?.dailyBreakdown ?? []).isEmpty
         let hasUsageBreakdown = openAIWebEligible && !(dashboard?.usageBreakdown ?? []).isEmpty
-        let hasCodeReviewLogs = openAIWebEligible
+        let hasCodeReviewLogs = openAIWebEligible && !(dashboard?.codeReviewLogs ?? []).isEmpty
         let hasCostHistory = self.settings.isCostUsageEffectivelyEnabled(for: currentProvider) &&
             (self.store.tokenSnapshot(for: currentProvider)?.daily.isEmpty == false)
         let hasOpenAIWebMenuItems = !showAllTokenAccounts &&

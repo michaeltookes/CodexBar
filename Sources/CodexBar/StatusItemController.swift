@@ -52,6 +52,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
 
     var creditsPurchaseWindow: OpenAICreditsPurchaseWindowController?
     var codeReviewLogsWindow: CodeReviewLogsPanelWindowController?
+    var codeReviewLogsRefreshTask: Task<Void, Never>?
 
     var activeLoginProvider: UsageProvider? {
         didSet {

@@ -70,26 +70,34 @@ extension StatusItemController {
     @objc func openCodeReviewLogsPanel() {
         let controller = self.codeReviewLogsWindow ?? CodeReviewLogsPanelWindowController()
         let initialEntries = self.store.openAIDashboard?.codeReviewLogs ?? []
+        let hadInitialEntries = !initialEntries.isEmpty
         controller.show(entries: initialEntries)
         self.codeReviewLogsWindow = controller
 
-        Task { @MainActor [weak self] in
+        self.codeReviewLogsRefreshTask?.cancel()
+        self.codeReviewLogsRefreshTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            defer { self.codeReviewLogsRefreshTask = nil }
             let accountEmail = self.store.codexAccountEmailForOpenAIDashboard()
             let fetcher = OpenAIDashboardFetcher()
             var refreshedEntries = await fetcher.loadCodeReviewLogs(
                 accountEmail: accountEmail,
-                timeout: 15)
-            if refreshedEntries.isEmpty {
+                timeout: hadInitialEntries ? 6 : 8)
+            guard !Task.isCancelled else { return }
+            if refreshedEntries.isEmpty, !hadInitialEntries {
                 await ProviderInteractionContext.$current.withValue(.userInitiated) {
                     await self.store.refresh(forceTokenUsage: true)
                 }
+                guard !Task.isCancelled else { return }
                 let fallbackEmail = self.store.codexAccountEmailForOpenAIDashboard()
                 refreshedEntries = await fetcher.loadCodeReviewLogs(
                     accountEmail: fallbackEmail,
-                    timeout: 10)
+                    timeout: 6)
             }
-            self.codeReviewLogsWindow?.show(entries: refreshedEntries)
+            guard !Task.isCancelled else { return }
+            if !refreshedEntries.isEmpty || !hadInitialEntries {
+                self.codeReviewLogsWindow?.show(entries: refreshedEntries)
+            }
         }
     }
 

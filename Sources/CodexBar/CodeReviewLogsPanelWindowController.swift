@@ -45,36 +45,46 @@ final class CodeReviewLogsPanelWindowController: NSWindowController {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private nonisolated static func openLogURL(_ rawURL: String?) {
-        guard let url = self.sanitizedLogURL(rawURL) else { return }
-        DispatchQueue.main.async {
-            NSWorkspace.shared.open(url)
-        }
+    private nonisolated static func openLogURL(_ url: URL) {
+        NSWorkspace.shared.open(url)
     }
 
-    private nonisolated static func sanitizedLogURL(_ rawURL: String?) -> URL? {
+    nonisolated static func sanitizedLogURL(_ rawURL: String?) -> URL? {
         guard let rawURL else { return nil }
         let trimmed = rawURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
-        if let absoluteURL = URL(string: trimmed),
-           let scheme = absoluteURL.scheme?.lowercased(),
-           scheme == "http" || scheme == "https",
-           let host = absoluteURL.host?.lowercased(),
-           host.contains("chatgpt.com")
-        {
+        if let absoluteURL = URL(string: trimmed), self.isAllowedCodeReviewLogURL(absoluteURL) {
             return absoluteURL
         }
         guard let baseURL = URL(string: "https://chatgpt.com"),
               let resolved = URL(string: trimmed, relativeTo: baseURL)?.absoluteURL,
-              let host = resolved.host?.lowercased(),
-              host.contains("chatgpt.com") else { return nil }
+              self.isAllowedCodeReviewLogURL(resolved) else { return nil }
         return resolved
+    }
+
+    private nonisolated static func isAllowedCodeReviewLogURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(),
+              scheme == "http" || scheme == "https",
+              let host = url.host?.lowercased() else { return false }
+
+        if host.contains("chatgpt.com") {
+            return true
+        }
+
+        let normalizedHost = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
+        guard normalizedHost == "github.com" else { return false }
+
+        let path = url.path.lowercased()
+        return path.contains("/pull/")
+            || path.contains("/review/")
+            || path.contains("/commit/")
+            || path.contains("/compare/")
     }
 }
 
 private struct CodeReviewLogsPanelView: View {
     @Bindable var model: CodeReviewLogsPanelModel
-    let onOpenURL: (String?) -> Void
+    let onOpenURL: (URL) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -114,12 +124,13 @@ private struct CodeReviewLogsPanelView: View {
 
 private struct CodeReviewLogRowView: View {
     let entry: OpenAICodeReviewLogEntry
-    let onOpenURL: (String?) -> Void
+    let onOpenURL: (URL) -> Void
 
     var body: some View {
         let dateText = self.sanitizedText(self.entry.dateText)
         let stateText = self.normalizedStateText(self.entry.stateText)
         let actionText = self.sanitizedText(self.entry.actionText)
+        let openURL = CodeReviewLogsPanelWindowController.sanitizedLogURL(self.entry.url)
         VStack(alignment: .leading, spacing: 6) {
             Text(self.entry.title)
                 .font(.headline)
@@ -145,16 +156,13 @@ private struct CodeReviewLogRowView: View {
                 if let stateText {
                     self.pill(text: stateText, style: self.stateStyle(for: stateText))
                 }
-                if let actionText, self.entry.url != nil {
-                    Button(action: { self.onOpenURL(self.entry.url) }, label: {
-                        self.pill(text: actionText, style: .action)
+                if let openURL {
+                    Button(action: { self.onOpenURL(openURL) }, label: {
+                        self.pill(text: actionText ?? "Open", style: .action)
                     })
                     .buttonStyle(.plain)
-                } else if self.entry.url != nil {
-                    Button(action: { self.onOpenURL(self.entry.url) }, label: {
-                        self.pill(text: "Open", style: .action)
-                    })
-                    .buttonStyle(.plain)
+                } else if let actionText {
+                    self.pill(text: actionText, style: .neutral)
                 }
             }
         }
@@ -200,7 +208,7 @@ private struct CodeReviewLogRowView: View {
         case .warning:
             (Color(nsColor: .systemOrange), Color(nsColor: .systemOrange).opacity(0.16))
         case .success:
-            (Color(nsColor: .systemPurple), Color(nsColor: .systemPurple).opacity(0.16))
+            (Color(nsColor: .systemGreen), Color(nsColor: .systemGreen).opacity(0.16))
         case .error:
             (Color(nsColor: .systemRed), Color(nsColor: .systemRed).opacity(0.16))
         case .action:

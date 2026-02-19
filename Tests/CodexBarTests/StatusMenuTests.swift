@@ -264,8 +264,12 @@ struct StatusMenuTests {
         let menu = controller.makeMenu()
         controller.menuWillOpen(menu)
         let titles = Set(menu.items.map(\.title))
+        let usageItem = menu.items.first { ($0.representedObject as? String) == "menuCardUsage" }
         #expect(!titles.contains("Credits history"))
         #expect(!titles.contains("Usage breakdown"))
+        #expect(
+            usageItem?.submenu?.items
+                .contains { ($0.representedObject as? String) == "openCodeReviewLogsPanel" } != true)
     }
 
     @Test
