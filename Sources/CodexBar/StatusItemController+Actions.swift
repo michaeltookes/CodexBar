@@ -76,7 +76,7 @@ extension StatusItemController {
         Task { @MainActor [weak self] in
             guard let self else { return }
             await ProviderInteractionContext.$current.withValue(.userInitiated) {
-                await self.store.refresh(forceTokenUsage: false)
+                await self.store.refresh(forceTokenUsage: true)
             }
             let refreshedEntries = self.store.openAIDashboard?.codeReviewLogs ?? []
             guard !refreshedEntries.isEmpty else { return }
